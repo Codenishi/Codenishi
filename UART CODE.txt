@@ -1,0 +1,46 @@
+#include<lpc17xx.h>	//include the LPC17XX standard header files
+//#include<stdio.h>
+#define s LPC_SC	   // define LPC_SC(SYSTEM CONTROL) as s
+#define u LPC_UART0	   // define LPC_UART0 as u
+void pll()				//phase locked loop(function) 
+{
+s->SCS=(1<<5);				// Enabling the main oscillator by OSCEN 5BIT
+while(s->SCS & (1<<6)==0);	 //	 polling for main oscillator(OSCEN AND OSCSTAT)
+s->CLKSRCSEL=(1<<0);	   //setting the 0th bit high for selecting main oscillator as clock source 
+s->PLL0CON=(1<<0);		   // Enabling PLL0 by enabling 0th bit high in   PLLCON register
+s->PLL0CFG=14;			  //giving the multiplier 	
+s->PLL0FEED=0xAA;		   //this register enables the PLL0CON and PLL0CFG by giving correctfeed sequence
+s->PLL0FEED=0x55;
+s->CCLKCFG=5;				//configuring divider value for periferial
+while(s->PLL0STAT&(1<<26)==0); //locking the status of pll0
+s->PLL0CON|=(1<<1);			   //enabling pll0 connect bit 1 followed by feed sequence
+s->PLL0FEED=0xAA;
+s->PLL0FEED=0x55;
+}
+void basic_inituart0()
+{
+//1.power on the UART0--PCONP--3rd bit(1)
+//2.Frequency
+//3.pins TXD0,RXD0
+LPC_PINCON->PINSEL0=(1<<4)|(1<<6);	  //turning 4th and 6th bit high for TXD0 and RXD0
+u->LCR=(1<<0)|(1<<1)|(1<<7);//---WORD LENGTH,DLAB=1
+u->DLL=98;		  //setting the budrate as 9600
+u->DLM=0;
+u->LCR&=~(1<<7);
+}
+int i;
+char name[16]="Nishikanta Sahoo";
+int main()
+{
+pll();
+basic_inituart0();//transmit the data
+
+for(i=0;i<=16;i++)
+{
+while((u->LSR & (1<<5))==0);//check if THR is empty
+u->THR=name[i];//load the data to be transmitted through UART);
+} 
+while(1);//printf("\n");  //print new line after transmitting the name  
+}
+
+
